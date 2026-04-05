@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from model import predict_failure, explain_prediction, get_solutions, train_model
 import traceback
@@ -6,7 +6,9 @@ import os
 import psutil
 import time
 
-app = Flask(__name__)
+# Setup Flask app with static folder for frontend
+FRONTEND_BUILD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'frontend', 'dist')
+app = Flask(__name__, static_folder=FRONTEND_BUILD_DIR, static_url_path='')
 CORS(app)
 
 # Train model on startup if not exists
@@ -129,11 +131,25 @@ def monitor():
 
 @app.errorhandler(404)
 def not_found(error):
-    return jsonify({'error': 'Endpoint not found'}), 404
+    # Check if it's a request for static files
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Endpoint not found'}), 404
+    
+    # Serve index.html for all other routes (SPA routing)
+    index_path = os.path.join(FRONTEND_BUILD_DIR, 'index.html')
+    if os.path.exists(index_path):
+        return send_from_directory(FRONTEND_BUILD_DIR, 'index.html'), 200
+    
+    return jsonify({'error': 'Frontend not built. Please run npm run build in frontend directory'}), 404
 
 @app.errorhandler(405)
 def method_not_allowed(error):
     return jsonify({'error': 'Method not allowed'}), 405
+
+# Serve index.html for root path
+@app.route('/')
+def serve_index():
+    return send_from_directory(FRONTEND_BUILD_DIR, 'index.html')
 
 if __name__ == '__main__':
     print("Starting Software Failure Prediction API...")

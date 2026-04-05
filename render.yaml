@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: software-failure-prediction
+    runtime: python
+    pythonVersion: 3.9
+    buildCommand: >
+      apt-get update &&
+      apt-get install -y nodejs npm &&
+      cd frontend &&
+      npm install &&
+      npm run build &&
+      cd ../backend &&
+      pip install -r requirements.txt
+    startCommand: cd backend && gunicorn --bind 0.0.0.0:10000 app:app
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHONUNBUFFERED
+        value: "1"
+    health:
+      path: /api/health
+    memoryMB: 512
