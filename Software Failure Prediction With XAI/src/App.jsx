@@ -39,7 +39,7 @@ function App() {
     setError(null)
     
     try {
-      const apiPromise = axios.post('http://localhost:5000/api/predict', formData, {
+      const apiPromise = axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/predict`, formData, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -64,7 +64,7 @@ function App() {
     setError(null)
     
     try {
-      const response = await axios.get('http://localhost:5000/api/monitor')
+      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/monitor`)
       setLiveData(response.data)
     } catch (err) {
       setError('Failed to get live system data. Make sure the backend is running.')
