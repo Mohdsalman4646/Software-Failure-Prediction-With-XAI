@@ -1,0 +1,142 @@
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from model import predict_failure, explain_prediction, get_solutions, train_model
+import traceback
+import os
+import psutil
+import time
+
+app = Flask(__name__)
+CORS(app)
+
+# Train model on startup if not exists
+if not os.path.exists('trained_model.pkl'):
+    print("Training model...")
+    model, accuracy = train_model()
+    print(f"Model trained with {accuracy * 100:.2f}% accuracy")
+else:
+    print("Model already exists, skipping training")
+
+@app.route('/api/predict', methods=['POST'])
+def predict():
+    """
+    Endpoint to make predictions
+    Expected JSON:
+    {
+        "cpu_usage": float (0-100),
+        "memory_usage": float (0-100),
+        "error_count": int (0-100),
+        "response_time": float (0-5000)
+    }
+    """
+    try:
+        data = request.json
+        
+        # Validate input
+        required_fields = ['cpu_usage', 'memory_usage', 'error_count', 'response_time']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        # Extract and validate values
+        cpu_usage = float(data['cpu_usage'])
+        memory_usage = float(data['memory_usage'])
+        error_count = float(data['error_count'])
+        response_time = float(data['response_time'])
+        
+        # Validate ranges
+        if not (0 <= cpu_usage <= 100):
+            return jsonify({'error': 'CPU usage must be between 0 and 100'}), 400
+        if not (0 <= memory_usage <= 100):
+            return jsonify({'error': 'Memory usage must be between 0 and 100'}), 400
+        if not (0 <= error_count <= 100):
+            return jsonify({'error': 'Error count must be between 0 and 100'}), 400
+        if not (0 <= response_time <= 5000):
+            return jsonify({'error': 'Response time must be between 0 and 5000 ms'}), 400
+        
+        # Make prediction
+        prediction, probability = predict_failure(cpu_usage, memory_usage, error_count, response_time)
+        explanation = explain_prediction(cpu_usage, memory_usage, error_count, response_time)
+        solutions = get_solutions(cpu_usage, memory_usage, error_count, response_time)
+        
+        result = {
+            'prediction': 'failure' if prediction == 1 else 'safe',
+            'probability': float(probability),
+            'explanation': explanation,
+            'solutions': solutions,
+            'features': {
+                'cpu_usage': cpu_usage,
+                'memory_usage': memory_usage,
+                'error_count': error_count,
+                'response_time': response_time
+            }
+        }
+        
+        return jsonify(result), 200
+    
+    except ValueError as e:
+        return jsonify({'error': f'Invalid input values: {str(e)}'}), 400
+    except Exception as e:
+        print(f"Error in prediction endpoint: {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
+@app.route('/api/health', methods=['GET'])
+def health():
+    """Health check endpoint"""
+    return jsonify({'status': 'healthy', 'message': 'API is running'}), 200
+
+@app.route('/api/info', methods=['GET'])
+def info():
+    """Get API information"""
+    return jsonify({
+        'name': 'Software Failure Prediction API',
+        'version': '1.0.0',
+        'description': 'ML-based system failure prediction with XAI explanations',
+        'features': ['Failure prediction', 'XAI explanations', 'Real-time monitoring'],
+        'endpoints': {
+            '/api/predict': 'POST - Make prediction',
+            '/api/health': 'GET - Health check',
+            '/api/info': 'GET - API information',
+            '/api/monitor': 'GET - Get live system data'
+        }
+    }), 200
+
+@app.route('/api/monitor', methods=['GET'])
+def monitor():
+    """Get live system monitoring data"""
+    try:
+        cpu = psutil.cpu_percent(interval=0.1)
+        memory = psutil.virtual_memory().percent
+        
+        # Create additional features based on system state
+        errors = 1 if cpu > 80 else 0
+        response_time = cpu * 0.5  # Simplified response time calculation
+        
+        data = {
+            'cpu_usage': cpu,
+            'memory_usage': memory,
+            'error_count': errors,
+            'response_time': response_time,
+            'timestamp': time.time()
+        }
+        
+        return jsonify(data), 200
+    
+    except Exception as e:
+        print(f"Error in monitoring endpoint: {str(e)}")
+        return jsonify({'error': f'Failed to get system data: {str(e)}'}), 500
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({'error': 'Endpoint not found'}), 404
+
+@app.errorhandler(405)
+def method_not_allowed(error):
+    return jsonify({'error': 'Method not allowed'}), 405
+
+if __name__ == '__main__':
+    print("Starting Software Failure Prediction API...")
+    print("Server running on http://localhost:5000")
+    print("API documentation available at http://localhost:5000/api/info")
+    app.run(debug=True, port=5000, host='0.0.0.0')
