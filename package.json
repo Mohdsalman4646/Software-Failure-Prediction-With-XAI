@@ -1,0 +1,22 @@
+{
+  "name": "software-failure-prediction-with-xai",
+  "version": "1.0.0",
+  "description": "Full-stack ML application for software failure prediction with XAI",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "lint": "npm --prefix frontend run lint",
+    "preview": "npm --prefix frontend run preview",
+    "install-deps": "npm --prefix frontend install && pip install -r backend/requirements.txt",
+    "start": "cd backend && python app.py"
+  },
+  "keywords": [
+    "machine-learning",
+    "xai",
+    "explainability",
+    "failure-prediction"
+  ],
+  "author": "",
+  "license": "MIT"
+}
