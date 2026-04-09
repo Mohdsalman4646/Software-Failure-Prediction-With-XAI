@@ -1,7 +1,7 @@
 import './FeatureImportance.css'
 
 function FeatureImportance({ explanation }) {
-  if (!explanation) return null
+  if (typeof explanation !== 'string' || explanation.trim().length === 0) return null
 
   // Parse explanation to extract features with icons
   const parseExplanation = (text) => {

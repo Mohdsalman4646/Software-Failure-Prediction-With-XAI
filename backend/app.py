@@ -1,8 +1,9 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from model import predict_failure, explain_prediction, get_solutions, train_model
+from model import MODEL_PATH, predict_failure, explain_prediction, get_solutions, train_model
 import traceback
 import os
+import math
 import psutil
 import time
 
@@ -12,12 +13,89 @@ app = Flask(__name__, static_folder=FRONTEND_BUILD_DIR, static_url_path='')
 CORS(app)
 
 # Train model on startup if not exists
-if not os.path.exists('trained_model.pkl'):
+if not os.path.exists(MODEL_PATH):
     print("Training model...")
     model, accuracy = train_model()
     print(f"Model trained with {accuracy * 100:.2f}% accuracy")
 else:
     print("Model already exists, skipping training")
+
+
+EXPECTED_INPUTS = {
+    'cpu_usage': {'min': 0, 'max': 100, 'label': 'CPU usage'},
+    'memory_usage': {'min': 0, 'max': 100, 'label': 'Memory usage'},
+    'error_count': {'min': 0, 'max': 100, 'label': 'Error count'},
+    'response_time': {'min': 0, 'max': 5000, 'label': 'Response time'},
+}
+
+
+def error_response(message, code, status_code=400, field=None, details=None):
+    payload = {
+        'error': message,
+        'code': code,
+    }
+
+    if field is not None:
+        payload['field'] = field
+
+    if details is not None:
+        payload['details'] = details
+
+    return jsonify(payload), status_code
+
+
+def parse_numeric_field(data, field_name):
+    config = EXPECTED_INPUTS[field_name]
+
+    if field_name not in data:
+        return None, error_response(
+            f'Missing required field: {field_name}',
+            'MISSING_FIELD',
+            field=field_name,
+            details={'expected': config['label']}
+        )
+
+    raw_value = data[field_name]
+
+    if raw_value is None or isinstance(raw_value, bool):
+        return None, error_response(
+            f'{config["label"]} must be a number.',
+            'INVALID_TYPE',
+            field=field_name,
+            details={'received': raw_value}
+        )
+
+    try:
+        value = float(raw_value)
+    except (TypeError, ValueError):
+        return None, error_response(
+            f'{config["label"]} must be a number.',
+            'INVALID_TYPE',
+            field=field_name,
+            details={'received': raw_value}
+        )
+
+    if not math.isfinite(value):
+        return None, error_response(
+            f'{config["label"]} must be a finite number.',
+            'NON_FINITE_VALUE',
+            field=field_name,
+            details={'received': raw_value}
+        )
+
+    if not (config['min'] <= value <= config['max']):
+        return None, error_response(
+            f'{config["label"]} must be between {config["min"]} and {config["max"]}.',
+            'OUT_OF_RANGE',
+            field=field_name,
+            details={
+                'min': config['min'],
+                'max': config['max'],
+                'received': value,
+            }
+        )
+
+    return value, None
 
 @app.route('/api/predict', methods=['POST'])
 def predict():
@@ -32,29 +110,30 @@ def predict():
     }
     """
     try:
-        data = request.json
-        
-        # Validate input
-        required_fields = ['cpu_usage', 'memory_usage', 'error_count', 'response_time']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({'error': f'Missing required field: {field}'}), 400
-        
-        # Extract and validate values
-        cpu_usage = float(data['cpu_usage'])
-        memory_usage = float(data['memory_usage'])
-        error_count = float(data['error_count'])
-        response_time = float(data['response_time'])
-        
-        # Validate ranges
-        if not (0 <= cpu_usage <= 100):
-            return jsonify({'error': 'CPU usage must be between 0 and 100'}), 400
-        if not (0 <= memory_usage <= 100):
-            return jsonify({'error': 'Memory usage must be between 0 and 100'}), 400
-        if not (0 <= error_count <= 100):
-            return jsonify({'error': 'Error count must be between 0 and 100'}), 400
-        if not (0 <= response_time <= 5000):
-            return jsonify({'error': 'Response time must be between 0 and 5000 ms'}), 400
+        data = request.get_json(silent=True)
+
+        if not isinstance(data, dict):
+            return error_response(
+                'Request body must be valid JSON.',
+                'INVALID_JSON',
+                details={'expected': list(EXPECTED_INPUTS.keys())}
+            )
+
+        cpu_usage, error = parse_numeric_field(data, 'cpu_usage')
+        if error:
+            return error
+
+        memory_usage, error = parse_numeric_field(data, 'memory_usage')
+        if error:
+            return error
+
+        error_count, error = parse_numeric_field(data, 'error_count')
+        if error:
+            return error
+
+        response_time, error = parse_numeric_field(data, 'response_time')
+        if error:
+            return error
         
         # Make prediction
         prediction, probability = predict_failure(cpu_usage, memory_usage, error_count, response_time)
@@ -76,12 +155,15 @@ def predict():
         
         return jsonify(result), 200
     
-    except ValueError as e:
-        return jsonify({'error': f'Invalid input values: {str(e)}'}), 400
     except Exception as e:
         print(f"Error in prediction endpoint: {str(e)}")
         print(traceback.format_exc())
-        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+        return error_response(
+            'Internal server error while processing prediction request.',
+            'INTERNAL_SERVER_ERROR',
+            status_code=500,
+            details={'exception': str(e)}
+        )
 
 @app.route('/api/health', methods=['GET'])
 def health():

@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import numpy as np
 import joblib
 from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split
@@ -7,7 +8,48 @@ from sklearn.metrics import accuracy_score
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(BASE_DIR, "data.csv")
-MODEL_PATH = os.path.join(BASE_DIR, "trained_model.pkl")
+MODEL_PATH = os.path.join(BASE_DIR, "trained_model_percent.pkl")
+MODEL_VERSION = 1
+CPU_SCALE_FEATURE = "cpu"
+ERROR_SCALE_FEATURE = "errors"
+CPU_ALERT_THRESHOLD = 75
+MEMORY_ALERT_THRESHOLD = 50
+ERROR_ALERT_THRESHOLD = 75
+RESPONSE_TIME_ALERT_THRESHOLD = 310
+
+
+def _scale_to_percent(values, minimum, maximum):
+    if maximum <= minimum:
+        return np.zeros(len(values), dtype=float)
+
+    return ((values - minimum) / (maximum - minimum)) * 100.0
+
+
+def _prepare_training_frame(data):
+    training_frame = data.copy()
+    cpu_min = float(training_frame[CPU_SCALE_FEATURE].min())
+    cpu_max = float(training_frame[CPU_SCALE_FEATURE].max())
+    error_min = float(training_frame[ERROR_SCALE_FEATURE].min())
+    error_max = float(training_frame[ERROR_SCALE_FEATURE].max())
+
+    training_frame[CPU_SCALE_FEATURE] = _scale_to_percent(
+        training_frame[CPU_SCALE_FEATURE].to_numpy(dtype=float), cpu_min, cpu_max
+    )
+    training_frame[ERROR_SCALE_FEATURE] = _scale_to_percent(
+        training_frame[ERROR_SCALE_FEATURE].to_numpy(dtype=float), error_min, error_max
+    )
+
+    return training_frame
+
+
+def _load_artifacts():
+    artifacts = joblib.load(MODEL_PATH)
+
+    if isinstance(artifacts, dict):
+        return artifacts
+
+    raise ValueError("Unsupported model artifact format. Retrain the model.")
+
 
 # ----------------------------
 # TRAIN MODEL
@@ -17,9 +59,11 @@ def train_model():
     # Load dataset
     data = pd.read_csv(DATA_PATH)
 
+    training_frame = _prepare_training_frame(data)
+
     # Features and label
-    X = data[["cpu", "memory", "errors", "response_time"]]
-    y = data["failure"]
+    X = training_frame[["cpu", "memory", "errors", "response_time"]]
+    y = training_frame["failure"]
 
     # Split dataset
     X_train, X_test, y_train, y_test = train_test_split(
@@ -35,7 +79,10 @@ def train_model():
     accuracy = accuracy_score(y_test, predictions)
 
     # Save model
-    joblib.dump(model, MODEL_PATH)
+    joblib.dump({
+        "version": MODEL_VERSION,
+        "model": model,
+    }, MODEL_PATH)
 
     print("Model trained and saved successfully")
     print(f"Model accuracy: {accuracy * 100:.2f}%")
@@ -47,7 +94,8 @@ def train_model():
 # LOAD MODEL
 # ----------------------------
 def load_model():
-    return joblib.load(MODEL_PATH)
+    artifacts = _load_artifacts()
+    return artifacts["model"], artifacts
 
 
 # ----------------------------
@@ -55,11 +103,10 @@ def load_model():
 # ----------------------------
 def predict_failure(cpu, memory, errors, response_time):
 
-    model = load_model()
+    model, _ = load_model()
 
     # Use numpy array to avoid feature name warnings
-    import numpy as np
-    input_data = np.array([[cpu, memory, errors, response_time]])
+    input_data = np.array([[cpu, memory, errors, response_time]], dtype=float)
 
     prediction = model.predict(input_data)[0]
     probability = model.predict_proba(input_data)[0][1]
@@ -74,16 +121,16 @@ def explain_prediction(cpu, memory, errors, response_time):
 
     reasons = []
 
-    if cpu > 1500:
+    if cpu > CPU_ALERT_THRESHOLD:
         reasons.append("the computer's processor is working too hard")
 
-    if memory > 50:
+    if memory > MEMORY_ALERT_THRESHOLD:
         reasons.append("the computer's memory is almost full")
 
-    if errors > 5:
+    if errors > ERROR_ALERT_THRESHOLD:
         reasons.append("the computer is making too many mistakes")
 
-    if response_time > 310:
+    if response_time > RESPONSE_TIME_ALERT_THRESHOLD:
         reasons.append("the computer is taking too long to respond")
 
     if reasons:
@@ -99,7 +146,7 @@ def get_solutions(cpu, memory, errors, response_time):
 
     solutions = []
 
-    if cpu > 1500:
+    if cpu > CPU_ALERT_THRESHOLD:
         solutions.append({
             "issue": "High CPU Usage",
             "problem": "The computer's processor is working too hard",
@@ -112,7 +159,7 @@ def get_solutions(cpu, memory, errors, response_time):
             ]
         })
 
-    if memory > 50:
+    if memory > MEMORY_ALERT_THRESHOLD:
         solutions.append({
             "issue": "High Memory Usage",
             "problem": "The computer's memory is almost full",
@@ -126,7 +173,7 @@ def get_solutions(cpu, memory, errors, response_time):
             ]
         })
 
-    if errors > 5:
+    if errors > ERROR_ALERT_THRESHOLD:
         solutions.append({
             "issue": "High Error Count",
             "problem": "The computer is making too many mistakes",
@@ -140,7 +187,7 @@ def get_solutions(cpu, memory, errors, response_time):
             ]
         })
 
-    if response_time > 310:
+    if response_time > RESPONSE_TIME_ALERT_THRESHOLD:
         solutions.append({
             "issue": "Slow Response Time",
             "problem": "The computer is taking too long to respond",
@@ -167,9 +214,9 @@ if __name__ == "__main__":
     model, accuracy = train_model()
 
     # Example test values
-    cpu = 1600
+    cpu = 85
     memory = 60
-    errors = 8
+    errors = 80
     response_time = 320
 
     prediction, probability = predict_failure(cpu, memory, errors, response_time)

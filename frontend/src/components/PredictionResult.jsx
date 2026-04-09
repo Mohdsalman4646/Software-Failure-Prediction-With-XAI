@@ -1,9 +1,18 @@
 import './PredictionResult.css'
 
 function PredictionResult({ prediction }) {
+  if (!prediction || typeof prediction !== 'object') {
+    return null
+  }
+
   const isSafe = prediction.prediction === 'safe'
-  const probability = (prediction.probability * 100).toFixed(2)
-  const riskLevel = prediction.probability > 0.7 ? 'HIGH' : prediction.probability > 0.4 ? 'MEDIUM' : 'LOW'
+  const probabilityValue = Number(prediction.probability)
+  if (!Number.isFinite(probabilityValue)) {
+    return null
+  }
+
+  const probability = (probabilityValue * 100).toFixed(2)
+  const riskLevel = probabilityValue > 0.7 ? 'HIGH' : probabilityValue > 0.4 ? 'MEDIUM' : 'LOW'
   const riskIcon = isSafe ? '✅' : '🚨'
   const riskText = isSafe ? 'System Safe' : 'System at Risk'
 
@@ -33,7 +42,7 @@ function PredictionResult({ prediction }) {
         <div className="result-metrics">
           <div className="metric-card">
             <span className="metric-label">📊 Prediction</span>
-            <span className="metric-value">{prediction.prediction.toUpperCase()}</span>
+            <span className="metric-value">{String(prediction.prediction).toUpperCase()}</span>
           </div>
           <div className="metric-card">
             <span className="metric-label">⚡ Risk Level</span>
