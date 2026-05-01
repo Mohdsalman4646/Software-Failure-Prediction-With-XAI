@@ -12,7 +12,25 @@ import './App.css'
 const SPLASH_VISIBLE_MS = 3800
 const SPLASH_FADE_MS = 800
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000').replace(/\/$/, '')
+const getApiBaseUrl = () => {
+  const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL
+
+  if (configuredBaseUrl) {
+    return configuredBaseUrl.replace(/\/$/, '')
+  }
+
+  if (import.meta.env.DEV) {
+    return 'http://localhost:5000'
+  }
+
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin.replace(/\/$/, '')
+  }
+
+  return 'http://localhost:5000'
+}
+
+const API_BASE_URL = getApiBaseUrl()
 const HISTORY_STORAGE_KEY = 'prediction_history_v1'
 const HISTORY_MAX_ITEMS = 120
 const LIVE_FEED_INTERVAL_MS = 1000
