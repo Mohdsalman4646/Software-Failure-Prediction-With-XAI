@@ -2,7 +2,7 @@ services:
   - type: web
     name: software-failure-prediction
     runtime: python
-    pythonVersion: 3.9
+    pythonVersion: 3.11.9
     buildCommand: >
       apt-get update &&
       apt-get install -y nodejs npm &&
@@ -11,10 +11,18 @@ services:
       npm run build &&
       cd ../backend &&
       pip install -r requirements.txt
-    startCommand: cd backend && gunicorn --bind 0.0.0.0:10000 app:app
+    startCommand: cd backend && gunicorn --bind 0.0.0.0:$PORT app:app
     envVars:
+      - key: PORT
+        value: 10000
       - key: FLASK_ENV
         value: production
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: FLASK_HOST
+        value: 0.0.0.0
+      - key: CORS_ORIGINS
+        value: http://localhost:5173,http://127.0.0.1:5173
       - key: PYTHONUNBUFFERED
         value: "1"
     health:

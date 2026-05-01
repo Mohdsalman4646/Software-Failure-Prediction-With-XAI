@@ -5,8 +5,9 @@ function PredictionForm({ onSubmit, isLoading, liveData }) {
   const [formData, setFormData] = useState({
     cpu_usage: 50,
     memory_usage: 60,
-    error_count: 5,
-    response_time: 200
+    disk_usage: 70,
+    network_latency: 80,
+    error_rate: 5
   })
 
   // Update form data when live data is received
@@ -17,8 +18,9 @@ function PredictionForm({ onSubmit, isLoading, liveData }) {
         ...prevData,
         cpu_usage: Math.round(liveData.cpu_usage),
         memory_usage: Math.round(liveData.memory_usage),
-        error_count: Math.round(liveData.error_count),
-        response_time: Math.round(liveData.response_time)
+        disk_usage: Math.round(liveData.disk_usage),
+        network_latency: Math.round(liveData.network_latency),
+        error_rate: Math.round(liveData.error_rate)
       }))
     }
   }, [liveData])
@@ -82,48 +84,57 @@ function PredictionForm({ onSubmit, isLoading, liveData }) {
         </div>
       </div>
 
-      <div className="form-group">
-        <label htmlFor="error_count">
-          Error Count
-          <span className="value-display">{formData.error_count}</span>
-        </label>
-        <input
-          type="range"
-          id="error_count"
-          name="error_count"
-          min="0"
-          max="100"
-          value={formData.error_count}
-          onChange={handleChange}
-          className="range-input"
-        />
-        <div className="range-labels">
-          <span>0</span>
-          <span>50</span>
-          <span>100</span>
-        </div>
-      </div>
+      <input
+        type="hidden"
+        id="disk_usage"
+        name="disk_usage"
+        value={formData.disk_usage}
+        readOnly
+      />
 
       <div className="form-group">
-        <label htmlFor="response_time">
-          Response Time (ms)
-          <span className="value-display">{formData.response_time}ms</span>
+        <label htmlFor="network_latency">
+          Network Latency (ms)
+          <span className="value-display">{formData.network_latency}ms</span>
         </label>
         <input
           type="range"
-          id="response_time"
-          name="response_time"
+          id="network_latency"
+          name="network_latency"
           min="0"
-          max="5000"
-          step="100"
-          value={formData.response_time}
+          max="1000"
+          step="10"
+          value={formData.network_latency}
           onChange={handleChange}
           className="range-input"
         />
         <div className="range-labels">
           <span>0ms</span>
-          <span>2500ms</span>
-          <span>5000ms</span>
+          <span>500ms</span>
+          <span>1000ms</span>
+        </div>
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="error_rate">
+          Error Rate (%)
+          <span className="value-display">{formData.error_rate}%</span>
+        </label>
+        <input
+          type="range"
+          id="error_rate"
+          name="error_rate"
+          min="0"
+          max="100"
+          step="0.5"
+          value={formData.error_rate}
+          onChange={handleChange}
+          className="range-input"
+        />
+        <div className="range-labels">
+          <span>0%</span>
+          <span>50%</span>
+          <span>100%</span>
         </div>
       </div>
 

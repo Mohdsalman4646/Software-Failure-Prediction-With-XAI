@@ -5,70 +5,79 @@ function PredictionResult({ prediction }) {
     return null
   }
 
-  const isSafe = prediction.prediction === 'safe'
-  const probabilityValue = Number(prediction.probability)
-  if (!Number.isFinite(probabilityValue)) {
-    return null
-  }
-
-  const probability = (probabilityValue * 100).toFixed(2)
-  const riskLevel = probabilityValue > 0.7 ? 'HIGH' : probabilityValue > 0.4 ? 'MEDIUM' : 'LOW'
-  const riskIcon = isSafe ? '✅' : '🚨'
-  const riskText = isSafe ? 'System Safe' : 'System at Risk'
+  const riskLevel = prediction.risk_level || 'Medium'
+  const confidence = Number(prediction.confidence_score) || 0
+  
+  const isLow = riskLevel === 'Low'
+  const isMedium = riskLevel === 'Medium'
+  const isHigh = riskLevel === 'High'
+  
+  const riskIcon = isLow ? '✅' : isMedium ? '⚠️' : '🚨'
+  const riskText = isLow ? 'System Safe' : isMedium ? 'System Caution' : 'System at Risk'
+  const riskColor = isLow ? '#10b981' : isMedium ? '#f59e0b' : '#ef4444'
 
   return (
-    <div className={`prediction-result ${isSafe ? 'safe' : 'failure'}`}>
+    <div className={`prediction-result ${isLow ? 'safe' : isHigh ? 'failure' : 'warning'}`}>
       <div className="result-header">
         <div className="status-indicator">
-          <div className={`status-dot ${isSafe ? 'safe' : 'failure'}`}></div>
+          <div className={`status-dot ${isLow ? 'safe' : isHigh ? 'failure' : 'warning'}`}></div>
           <h3 data-emoji={riskIcon}>{riskText}</h3>
         </div>
       </div>
 
       <div className="result-content">
         <div className="probability-section">
-          <h4>Prediction Confidence</h4>
+          <h4>Confidence Score</h4>
           <div className="probability-bar">
             <div 
-              className={`probability-fill ${isSafe ? 'safe' : 'failure'}`}
-              style={{ width: `${probability}%` }}
+              className={`probability-fill ${isLow ? 'safe' : isHigh ? 'failure' : 'warning'}`}
+              style={{ width: `${confidence}%` }}
             ></div>
           </div>
           <p className="probability-text">
-            {isSafe ? '✅ Safe' : '⚠️ Risk'}: <strong>{probability}%</strong>
+            <strong style={{ color: riskColor }}>{confidence.toFixed(1)}%</strong> confidence
           </p>
         </div>
 
         <div className="result-metrics">
           <div className="metric-card">
-            <span className="metric-label">📊 Prediction</span>
-            <span className="metric-value">{String(prediction.prediction).toUpperCase()}</span>
-          </div>
-          <div className="metric-card">
-            <span className="metric-label">⚡ Risk Level</span>
+            <span className="metric-label">🎲 Risk Level</span>
             <span className="metric-value" style={{
-              color: riskLevel === 'HIGH' ? '#ef4444' : riskLevel === 'MEDIUM' ? '#f59e0b' : '#10b981'
+              color: isLow ? '#10b981' : isMedium ? '#f59e0b' : '#ef4444'
             }}>
               {riskLevel}
             </span>
           </div>
           <div className="metric-card">
+            <span className="metric-label">📊 Confidence</span>
+            <span className="metric-value">{confidence.toFixed(1)}%</span>
+          </div>
+          <div className="metric-card">
             <span className="metric-label">🎯 System Status</span>
             <span className="metric-value" style={{
-              color: isSafe ? '#10b981' : '#ef4444'
+              color: isLow ? '#10b981' : isMedium ? '#f59e0b' : '#ef4444'
             }}>
-              {isSafe ? 'Active' : 'Alert'}
+              {isLow ? 'Healthy' : isMedium ? 'Monitor' : 'Alert'}
             </span>
           </div>
           <div className="metric-card">
-            <span className="metric-label">📈 Confidence</span>
-            <span className="metric-value">{probability}%</span>
+            <span className="metric-label">⚡ Recommendation</span>
+            <span className="metric-value" style={{ color: riskColor }}>
+              {isLow ? 'Continue' : isMedium ? 'Watch' : 'Act'}
+            </span>
           </div>
         </div>
 
+        {prediction.explanation && (
+          <div className="explanation-section">
+            <h4>📋 Analysis</h4>
+            <p className="explanation-text">{prediction.explanation}</p>
+          </div>
+        )}
+
         {prediction.solutions && prediction.solutions.length > 0 && (
           <div className="solutions-section">
-            <h4>🔧 Recommended Solutions</h4>
+            <h4>🔧 Recommended Actions</h4>
             <div className="solutions-list">
               {prediction.solutions.map((solution, index) => (
                 <div key={index} className="solution-item">

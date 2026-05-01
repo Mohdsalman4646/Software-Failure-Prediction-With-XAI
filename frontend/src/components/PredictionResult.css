@@ -1,5 +1,11 @@
 /* Prediction Result Styles */
 .prediction-result {
+  --risk-primary: var(--primary-color);
+  --risk-secondary: var(--secondary-color);
+  --risk-border: var(--border-color);
+  --risk-glow: rgba(99, 102, 241, 0.18);
+  --risk-bg-1: rgba(99, 102, 241, 0.05);
+  --risk-bg-2: rgba(236, 72, 153, 0.05);
   background: var(--bg-primary);
   border-radius: 1.5rem;
   overflow: hidden;
@@ -21,6 +27,12 @@
 }
 
 .prediction-result.safe {
+  --risk-primary: var(--success-color);
+  --risk-secondary: #059669;
+  --risk-border: var(--success-color);
+  --risk-glow: rgba(16, 185, 129, 0.2);
+  --risk-bg-1: rgba(16, 185, 129, 0.08);
+  --risk-bg-2: rgba(16, 185, 129, 0.04);
   border-color: var(--success-color);
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.02) 100%);
   box-shadow: 0 20px 60px rgba(16, 185, 129, 0.12);
@@ -32,10 +44,33 @@
 }
 
 .prediction-result.failure {
+  --risk-primary: var(--danger-color);
+  --risk-secondary: #dc2626;
+  --risk-border: var(--danger-color);
+  --risk-glow: rgba(239, 68, 68, 0.24);
+  --risk-bg-1: rgba(239, 68, 68, 0.1);
+  --risk-bg-2: rgba(239, 68, 68, 0.05);
   border-color: var(--danger-color);
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(239, 68, 68, 0.02) 100%);
   box-shadow: 0 20px 60px rgba(239, 68, 68, 0.12);
   animation: slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1), warningPulse 2s ease-in-out infinite 0.8s;
+}
+
+.prediction-result.warning {
+  --risk-primary: #f59e0b;
+  --risk-secondary: #d97706;
+  --risk-border: #f59e0b;
+  --risk-glow: rgba(245, 158, 11, 0.22);
+  --risk-bg-1: rgba(245, 158, 11, 0.1);
+  --risk-bg-2: rgba(245, 158, 11, 0.04);
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.06) 0%, rgba(245, 158, 11, 0.02) 100%);
+  box-shadow: 0 20px 60px rgba(245, 158, 11, 0.14);
+}
+
+.prediction-result.warning:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 30px 80px rgba(245, 158, 11, 0.24);
 }
 
 .prediction-result.failure:hover {
@@ -53,7 +88,7 @@
 }
 
 .result-header {
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  background: linear-gradient(135deg, var(--risk-primary) 0%, var(--risk-secondary) 100%);
   color: white;
   padding: 2rem;
   position: relative;
@@ -73,6 +108,10 @@
 
 .prediction-result.safe .result-header {
   background: linear-gradient(135deg, var(--success-color) 0%, #059669 100%);
+}
+
+.prediction-result.warning .result-header {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
 }
 
 .prediction-result.failure .result-header {
@@ -115,6 +154,11 @@
 .status-dot.failure {
   background: linear-gradient(135deg, var(--danger-color), #dc2626);
   box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
+}
+
+.status-dot.warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.6);
 }
 
 @keyframes pulse {
@@ -248,6 +292,10 @@
   background: linear-gradient(90deg, var(--success-color) 0%, #059669 100%);
 }
 
+.probability-fill.warning {
+  background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+}
+
 .probability-fill.failure {
   background: linear-gradient(90deg, var(--danger-color) 0%, #dc2626 100%);
   animation: slideRight 1.2s cubic-bezier(0.34, 1.56, 0.64, 1), pulse 1.5s ease-in-out infinite 1.3s;
@@ -257,7 +305,7 @@
   font-size: 1rem;
   font-weight: 700;
   color: var(--text-primary);
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  background: linear-gradient(135deg, var(--risk-primary), var(--risk-secondary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -271,10 +319,10 @@
 }
 
 .metric-card {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(236, 72, 153, 0.05));
+  background: linear-gradient(135deg, var(--risk-bg-1), var(--risk-bg-2));
   border-radius: 1rem;
   padding: 1.25rem;
-  border: 1px solid var(--border-color);
+  border: 1px solid color-mix(in srgb, var(--risk-border) 28%, var(--border-color));
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -311,9 +359,13 @@
 
 .metric-card:hover {
   transform: translateY(-6px);
-  box-shadow: 0 15px 40px rgba(99, 102, 241, 0.15);
-  border-color: rgba(99, 102, 241, 0.3);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(236, 72, 153, 0.08));
+  box-shadow: 0 15px 40px var(--risk-glow);
+  border-color: color-mix(in srgb, var(--risk-border) 55%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--risk-primary) 18%, transparent),
+    color-mix(in srgb, var(--risk-secondary) 12%, transparent)
+  );
 }
 
 .metric-label {
@@ -327,7 +379,7 @@
 .metric-value {
   font-size: 1.4rem;
   font-weight: 800;
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  background: linear-gradient(135deg, var(--risk-primary), var(--risk-secondary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
